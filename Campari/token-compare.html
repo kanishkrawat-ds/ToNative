@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Semantic Token Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --font-12: 12px;
+    --font-10: 10px;
+    --swatch: 51px;
+    --panel: 400px;
+    --muted: rgba(0, 0, 0, 0.6);
+    --tag-bg: #f7f7f7;
+    --orange: #f59e0b;
+    --orange-bg: #fff4e0;
+    --red: #ef4444;
+    --red-bg: #fdeaea;
+    --ok: #16a34a;
+    --ok-bg: #eaf6ee;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #fff;
+    color: #000;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    -webkit-font-smoothing: antialiased;
+    --alpha-dot: #000;                 /* reveal dot behind swatches (light theme) */
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 24px;
+    background: #fff;
+    border-bottom: 1px solid #ececec;
+    flex-wrap: wrap;
+  }
+  .toolbar h1 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.2px;
+  }
+  .toolbar .spacer { flex: 1 1 auto; }
+  .toolbar label.file {
+    font-size: 11px;
+    color: #333;
+    border: 1px solid #d8d8d8;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    background: #fafafa;
+    white-space: nowrap;
+  }
+  .toolbar label.file:hover { background: #f0f0f0; }
+  .toolbar label.file input { display: none; }
+  .toolbar .set-name {
+    font-size: 10px;
+    color: var(--muted);
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .toolbar button {
+    font-family: inherit;
+    font-size: 11px;
+    border: 1px solid #d8d8d8;
+    border-radius: 6px;
+    padding: 6px 12px;
+    background: #111;
+    color: #fff;
+    cursor: pointer;
+  }
+  .toolbar button.ghost { background: #fafafa; color: #333; }
+  .toolbar button:hover { opacity: 0.9; }
+  .toolbar .theme-ctl {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; color: #555; cursor: pointer;
+  }
+  .toolbar .theme-ctl .tlabel { min-width: 34px; text-align: right; }
+  .switch { position: relative; display: inline-block; width: 38px; height: 20px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider {
+    position: absolute; inset: 0; background: #d0d0d0; border-radius: 20px; transition: .2s;
+  }
+  .switch .slider:before {
+    content: ""; position: absolute; height: 16px; width: 16px; left: 2px; top: 2px;
+    background: #fff; border-radius: 50%; transition: .2s;
+  }
+  .switch input:checked + .slider { background: #080707; }
+  .switch input:checked + .slider:before { transform: translateX(18px); }
+  .switch input:disabled + .slider { opacity: .4; cursor: not-allowed; }
+
+  /* ---------- Filters ---------- */
+  .subbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 24px;
+    border-bottom: 1px solid #f1f1f1;
+    font-size: 10px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .subbar .legend { display: flex; gap: 14px; align-items: center; }
+  .subbar .legend .dot {
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .subbar .legend .dot i {
+    width: 9px; height: 9px; border-radius: 50%; display: inline-block;
+  }
+  .subbar select, .subbar input[type="search"] {
+    font-family: inherit; font-size: 10px;
+    border: 1px solid #ddd; border-radius: 5px; padding: 4px 8px; color: #000;
+  }
+  .subbar .summary { margin-left: auto; }
+  .subbar .summary b { color: #000; }
+  .subbar .mid-ctl { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .subbar .mid-ctl input { accent-color: #7c4dff; }
+
+  /* ---------- Column header ---------- */
+  .col-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 24px 8px;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid #f1f1f1;
+  }
+  .col-header .h-sno { width: 40px; flex: none; }
+  .col-header .h-panel { width: var(--panel); }
+  .col-header .h-panel.right { text-align: right; }
+  .col-header .h-gap { width: 0; }
+  .col-header .h-delta { width: 230px; flex: none; text-align: center; }
+  .col-header .h-suggest { flex: 1; min-width: 240px; padding-left: 14px; }
+
+  /* ---------- Rows ---------- */
+  #list { padding: 0 24px; }
+  .row {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid #f3f3f3;
+  }
+  .row:hover { background: #fcfcfc; }
+
+  /* serial number */
+  .sno {
+    width: 40px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    font-size: var(--font-10);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* generic panel (main + branch share structure) */
+  .panel {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: var(--panel);
+    padding: 14px 0;
+    flex-shrink: 0;
+  }
+  .panel .info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+    flex: 1 0 0;
+    min-width: 0;
+  }
+  .panel.branch .info { align-items: flex-end; text-align: right; }
+  .token-name {
+    font-size: var(--font-12);
+    line-height: 1.3;
+    color: #000;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .meta .base, .meta .hex {
+    font-size: var(--font-10);
+    line-height: 1.3;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .meta .divider {
+    width: 1px;
+    height: 10.27px;
+    background: rgba(0, 0, 0, 0.3);
+    flex: none;
+  }
+  /* Color swatches: a small circle sits BEHIND the color (black in light theme,
+     white in dark). Opaque colors hide it; translucent colors let it show through,
+     so alpha is easy to spot. The color is painted on ::after (from --sw),
+     the reveal-dot on ::before. */
+  .cswatch { position: relative; flex: none; overflow: hidden; }
+  .cswatch::before {
+    content: ""; position: absolute; inset: 0; margin: auto;
+    width: var(--dot, 16px); height: var(--dot, 16px); border-radius: 50%;
+    background: var(--alpha-dot, #000);
+  }
+  .cswatch::after { content: ""; position: absolute; inset: 0; background: var(--sw); }
+
+  .swatch { width: var(--swatch); height: var(--swatch); }
+
+  /* slim swatch of the suggested value, shown between the two swatches */
+  .mid-suggest { width: 16px; height: var(--swatch); align-self: center; --dot: 9px; display: none; }
+  .mid-suggest.empty { display: none !important; }
+  body.show-mid-suggest .mid-suggest { display: block; }
+
+  /* ---------- Delta tag ---------- */
+  .delta {
+    width: 230px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 12px;
+  }
+  .delta .tag {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: var(--tag-bg);
+    border-radius: 6px;
+    padding: 8px 12px;
+    min-width: 150px;
+    border: 1px solid transparent;
+  }
+  .delta .tag.ok    { background: var(--ok-bg);     border-color: rgba(22,163,74,0.25); }
+  .delta .tag.warn  { background: var(--orange-bg); border-color: rgba(245,158,11,0.35); }
+  .delta .tag.alert { background: var(--red-bg);    border-color: rgba(239,68,68,0.35); }
+
+  .delta .headline {
+    font-size: var(--font-10);
+    font-weight: 600;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .delta .tag.ok .headline    { color: var(--ok); }
+  .delta .tag.warn .headline  { color: var(--orange); }
+  .delta .tag.alert .headline { color: var(--red); }
+  .delta .headline .badge {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #fff;
+  }
+  .delta .tag.ok .badge    { background: var(--ok); }
+  .delta .tag.warn .badge  { background: var(--orange); }
+  .delta .tag.alert .badge { background: var(--red); }
+
+  .delta .breakdown {
+    font-size: 9px;
+    color: var(--muted);
+    display: flex;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .delta .breakdown b { color: rgba(0,0,0,0.75); font-weight: 500; }
+
+  /* ---------- Suggested Branch fix (Base.Colour) ---------- */
+  .suggest {
+    flex: 1;
+    min-width: 240px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px;
+    border-left: 1px solid #f1f1f1;
+  }
+  .suggest.ok   { background: var(--ok-bg); }
+  .suggest.warn { background: var(--orange-bg); }
+  .suggest .s-swatch { width: 51px; height: 51px; }
+  .suggest .s-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .suggest .s-name {
+    font-size: var(--font-12); color: #000; display: flex; align-items: center;
+    white-space: nowrap;
+  }
+  .suggest .s-meta { font-size: var(--font-10); color: var(--muted); white-space: nowrap; }
+  .suggest .s-meta b { color: #000; font-weight: 600; }
+  .suggest .s-verdict { font-weight: 600; }
+  .suggest.ok   .s-verdict { color: var(--ok); }
+  .suggest.warn .s-verdict { color: var(--orange); }
+
+  .empty {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* ---------- Base palette indicator ---------- */
+  .base-flag {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-left: 6px; vertical-align: middle; flex: none; cursor: help;
+  }
+  .base-flag.colour { background: #7c4dff; }                 /* Base.Colour (British) */
+  .base-flag.color  { background: #b9bcc0; box-shadow: inset 0 0 0 1px #9aa0a6; } /* Base.Color (American) */
+
+  /* ---------- Dark mode (page bg #080707) ---------- */
+  body.dark-mode { background: #080707; color: #e8e8e8; --alpha-dot: #fff; }
+  body.dark-mode .toolbar,
+  body.dark-mode .subbar,
+  body.dark-mode .col-header { background: #080707; border-color: #262424; }
+  body.dark-mode .toolbar h1 { color: #fff; }
+  body.dark-mode .toolbar .theme-ctl { color: #cfcccc; }
+  body.dark-mode .row { border-color: #1e1c1c; }
+  body.dark-mode .row:hover { background: #141313; }
+  body.dark-mode .token-name { color: #f2f2f2; }
+  body.dark-mode .meta .base,
+  body.dark-mode .meta .hex,
+  body.dark-mode .col-header,
+  body.dark-mode .set-name,
+  body.dark-mode .subbar,
+  body.dark-mode .sno { color: #9a9898; }
+  body.dark-mode .subbar .summary b { color: #fff; }
+  body.dark-mode .subbar .legend .dot { color: #9a9898; }
+  body.dark-mode .meta .divider { background: rgba(255,255,255,0.3); }
+  body.dark-mode .toolbar label.file,
+  body.dark-mode .toolbar button.ghost,
+  body.dark-mode .subbar select,
+  body.dark-mode .subbar input[type="search"] { background: #1a1919; border-color: #333; color: #ddd; }
+  body.dark-mode .info-btn { background: #1a1919; color: #aaa; border-color: #333; }
+  body.dark-mode .delta .tag { background: #1a1919; }
+  body.dark-mode .delta .tag.ok    { background: #10251a; }
+  body.dark-mode .delta .tag.warn  { background: #2e2410; }
+  body.dark-mode .delta .tag.alert { background: #2e1414; }
+  /* delta text on dark: lighten the muted breakdown + default headline (colored
+     ok/warn/alert headlines are more specific and keep their red/orange/green) */
+  body.dark-mode .delta .headline { color: #cfcccc; }
+  body.dark-mode .delta .breakdown { color: #a7a4a4; }
+  body.dark-mode .delta .breakdown b { color: #ededed; }
+  body.dark-mode .suggest { border-left-color: #262424; }
+  body.dark-mode .suggest.ok   { background: #10251a; }
+  body.dark-mode .suggest.warn { background: #2e2410; }
+  body.dark-mode .suggest .s-name { color: #f2f2f2; }
+  body.dark-mode .suggest .s-meta { color: #a7a4a4; }
+  body.dark-mode .suggest .s-meta b { color: #ededed; }
+
+  /* ---------- Info button ---------- */
+  .info-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; margin-left: 8px; padding: 0;
+    border-radius: 50%; border: 1px solid #cfcfcf; background: #fff;
+    color: #666; font-size: 10px; font-weight: 700; font-style: italic;
+    font-family: Georgia, "Times New Roman", serif; cursor: pointer;
+    vertical-align: middle; line-height: 1;
+  }
+  .info-btn:hover { background: #111; color: #fff; border-color: #111; }
+
+  /* ---------- Help dialog ---------- */
+  dialog#help {
+    border: none; border-radius: 12px; padding: 0; max-width: 560px; width: 92vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    font-family: "IBM Plex Mono", ui-monospace, monospace; color: #111;
+  }
+  dialog#help::backdrop { background: rgba(0,0,0,0.4); }
+  dialog#help .dlg-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid #eee;
+  }
+  dialog#help .dlg-head h2 { margin: 0; font-size: 14px; }
+  dialog#help .dlg-head button {
+    border: none; background: none; font-size: 20px; cursor: pointer; color: #999; line-height: 1;
+  }
+  dialog#help .dlg-body { padding: 18px 20px; font-size: 11.5px; line-height: 1.55; max-height: 72vh; overflow: auto; }
+  dialog#help h3 { font-size: 11.5px; margin: 16px 0 6px; }
+  dialog#help h3:first-child { margin-top: 0; }
+  dialog#help p { margin: 0 0 8px; color: #333; }
+  dialog#help table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 11px; }
+  dialog#help th, dialog#help td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
+  dialog#help th { color: #666; font-weight: 600; }
+  dialog#help .pill { display: inline-block; padding: 1px 7px; border-radius: 10px; color: #fff; font-size: 9px; }
+  dialog#help .example {
+    background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 10px 12px; margin: 8px 0;
+    display: flex; gap: 12px; align-items: center;
+  }
+  dialog#help .example .chips { display: flex; flex: none; }
+  dialog#help .example .chips i { width: 26px; height: 26px; display: block; }
+  dialog#help .example .txt { font-size: 10.5px; color: #444; }
+  dialog#help .example .txt b { color: #111; }
+  dialog#help .rule { margin-top: 12px; color: #666; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>Semantic Token Comparison<button class="info-btn" id="infoBtn" title="How to read the delta" aria-label="How to read the delta">i</button></h1>
+    <label class="file">
+      Load Set A (folder)
+      <input type="file" id="fileA" webkitdirectory directory multiple />
+    </label>
+    <span class="set-name" id="nameA">Set A · dummy</span>
+    <label class="file">
+      Load Set B (folder)
+      <input type="file" id="fileB" webkitdirectory directory multiple />
+    </label>
+    <span class="set-name" id="nameB">Set B · dummy</span>
+    <div class="spacer"></div>
+    <label class="theme-ctl" title="Switch token theme">
+      <span class="tlabel" id="themeLabel">Light</span>
+      <span class="switch"><input type="checkbox" id="themeToggle" disabled><span class="slider"></span></span>
+    </label>
+    <button class="ghost" id="reload">Load dummy data</button>
+  </div>
+
+  <div class="subbar">
+    <div class="legend">
+      <span class="dot"><i style="background:var(--ok)"></i>Imperceptible (ΔE &lt; 2)</span>
+      <span class="dot"><i style="background:var(--orange)"></i>Noticeable (ΔE 2–5)</span>
+      <span class="dot"><i style="background:var(--red)"></i>Significant (ΔE ≥ 5)</span>
+    </div>
+    <label>Sort:
+      <select id="sort">
+        <option value="delta-desc">Delta ↓ (biggest first)</option>
+        <option value="delta-asc">Delta ↑ (smallest first)</option>
+        <option value="name">Token name (A–Z)</option>
+        <option value="file">File order (as in JSON)</option>
+      </select>
+    </label>
+    <label>Show:
+      <select id="filter">
+        <option value="all">All</option>
+        <option value="flagged">Flagged only (orange + red)</option>
+        <option value="alert">Significant only (red)</option>
+      </select>
+    </label>
+    <label>Type:
+      <select id="typeFilter">
+        <option value="all">All tokens</option>
+        <option value="semantic">Semantic only</option>
+        <option value="primitive">Primitives only</option>
+      </select>
+    </label>
+    <label>Group:
+      <select id="groupFilter"><option value="all">All groups</option></select>
+    </label>
+    <input type="search" id="search" placeholder="Filter by token name…" />
+    <label class="mid-ctl" title="Show a slim swatch of the suggested value between the two colors">
+      <input type="checkbox" id="midToggle"> Suggested swatch
+    </label>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <div class="col-header">
+    <div class="h-sno">#</div>
+    <div class="h-panel">Set A — Main color</div>
+    <div class="h-gap"></div>
+    <div class="h-panel right">Set B — Branch color</div>
+    <div class="h-delta">Perceptual Delta</div>
+    <div class="h-suggest">Suggested Branch value · Base.Colour</div>
+  </div>
+
+  <div id="list"></div>
+
+  <dialog id="help">
+    <div class="dlg-head">
+      <h2>How to read the delta</h2>
+      <button id="helpClose" aria-label="Close">×</button>
+    </div>
+    <div class="dlg-body">
+      <p>Each row compares one token in <b>Set A</b> against the same token in <b>Set B</b>. The tag on the right tells you how different the two colors are — and whether a human eye would catch it.</p>
+
+      <h3>ΔE — overall difference</h3>
+      <p>Delta-E (CIEDE2000) rolls lightness, hue and saturation into one perceptual score. It answers <b>“should I care?”</b></p>
+      <table>
+        <tr><th>ΔE</th><th>What you see</th><th>Tag</th></tr>
+        <tr><td>&lt; 2</td><td>Invisible / near-identical</td><td><span class="pill" style="background:#16a34a">Match</span></td></tr>
+        <tr><td>2 – 5</td><td>Noticeable at a glance</td><td><span class="pill" style="background:#f59e0b">Noticeable</span></td></tr>
+        <tr><td>≥ 5</td><td>Clearly different colors</td><td><span class="pill" style="background:#ef4444">Significant</span></td></tr>
+      </table>
+
+      <h3>Lum — brightness difference</h3>
+      <p>How much lighter or darker Set B is vs Set A (relative luminance, %). <b>−</b> = darker, <b>+</b> = lighter. This is the “one looks dimmer” axis.</p>
+
+      <h3>Hue — color-wheel shift</h3>
+      <p>How far the color rotated around the wheel (0–180°). Small = a tint shift (green → teal); large = a different color family.</p>
+
+      <h3>Base palette dot</h3>
+      <p>Next to each Base name, a dot shows which primitive palette the value resolved from:
+        <i class="base-flag colour" style="margin:0 4px"></i><b>Base.Colour</b> (British) ·
+        <i class="base-flag color" style="margin:0 4px"></i><b>Base.Color</b> (American). Hover the dot for the full primitive path.</p>
+
+      <h3>Worked examples</h3>
+      <div class="example">
+        <div class="chips"><i style="background:#12B886"></i><i style="background:#10A978"></i></div>
+        <div class="txt"><b>ΔE ≈ 1.5 · Match.</b> Same green, a hair darker. Eye won’t catch it → no action.</div>
+      </div>
+      <div class="example">
+        <div class="chips"><i style="background:#E5E7EB"></i><i style="background:#D4D4D8"></i></div>
+        <div class="txt"><b>ΔE ≈ 4 · Noticeable.</b> A slightly deeper grey. A careful eye spots it → review.</div>
+      </div>
+      <div class="example">
+        <div class="chips"><i style="background:#3B82F6"></i><i style="background:#2563EB"></i></div>
+        <div class="txt"><b>ΔE 10.9 · Lum −8% · Hue 7°.</b> Mostly a big brightness drop plus a slight tint turn — obviously different → fix.</div>
+      </div>
+
+      <p class="rule">Rule of thumb: <b>ΔE</b> = the flag · <b>Lum</b> = is it a brightness problem · <b>Hue</b> = is it a tint problem.</p>
+    </div>
+  </dialog>
+
+<script>
+/* ============================================================
+   COLOR MATH  —  hex → sRGB → XYZ → LAB → LCH, plus CIEDE2000
+   ΔE2000 is the standard perceptual "can the eye catch it" metric.
+   We also surface ΔL (luminosity) and ΔH (hue) separately because
+   those are what the brief specifically calls out.
+   ============================================================ */
+
+function hexToRgb(hex) {
+  if (!hex) return null;
+  let h = hex.trim().replace(/^#/, "");
+  if (h.length === 3) h = h.split("").map(c => c + c).join("");
+  if (h.length === 8) h = h.slice(0, 6); // ignore alpha for color diff
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+// Parse #rgb / #rgba / #rrggbb / #rrggbbaa → { r, g, b, a } (a in 0..1)
+function hexToRgba(hex) {
+  if (!hex) return null;
+  let h = hex.trim().replace(/^#/, "");
+  if (h.length === 3) h = h.split("").map(c => c + c).join("");
+  if (h.length === 4) h = h.split("").map(c => c + c).join("");
+  let a = 1;
+  if (h.length === 8) { a = parseInt(h.slice(6, 8), 16) / 255; h = h.slice(0, 6); }
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a };
+}
+
+// Alpha-composite a translucent color over an opaque background → opaque rgb
+function compositeOver(fg, bg) {
+  const a = fg.a == null ? 1 : fg.a;
+  return {
+    r: Math.round(fg.r * a + bg.r * (1 - a)),
+    g: Math.round(fg.g * a + bg.g * (1 - a)),
+    b: Math.round(fg.b * a + bg.b * (1 - a)),
+  };
+}
+
+function lumFromRgb({ r, g, b }) {
+  return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
+}
+
+function srgbToLinear(c) {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function rgbToXyz({ r, g, b }) {
+  const R = srgbToLinear(r), G = srgbToLinear(g), B = srgbToLinear(b);
+  return {
+    x: (R * 0.4124 + G * 0.3576 + B * 0.1805) * 100,
+    y: (R * 0.2126 + G * 0.7152 + B * 0.0722) * 100,
+    z: (R * 0.0193 + G * 0.1192 + B * 0.9505) * 100,
+  };
+}
+
+function xyzToLab({ x, y, z }) {
+  // D65 reference white
+  const xn = 95.047, yn = 100.0, zn = 108.883;
+  const f = t => (t > 0.008856 ? Math.cbrt(t) : (7.787 * t) + 16 / 116);
+  const fx = f(x / xn), fy = f(y / yn), fz = f(z / zn);
+  return {
+    L: (116 * fy) - 16,
+    a: 500 * (fx - fy),
+    b: 200 * (fy - fz),
+  };
+}
+
+function hexToLab(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  return xyzToLab(rgbToXyz(rgb));
+}
+
+// Relative luminance (WCAG) 0..1 — used for a plain-English luminosity delta
+function relativeLuminance(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  return 0.2126 * srgbToLinear(rgb.r) + 0.7152 * srgbToLinear(rgb.g) + 0.0722 * srgbToLinear(rgb.b);
+}
+
+// CIEDE2000
+function deltaE2000(lab1, lab2) {
+  const { L: L1, a: a1, b: b1 } = lab1;
+  const { L: L2, a: a2, b: b2 } = lab2;
+  const kL = 1, kC = 1, kH = 1;
+  const rad = Math.PI / 180, deg = 180 / Math.PI;
+
+  const C1 = Math.hypot(a1, b1);
+  const C2 = Math.hypot(a2, b2);
+  const Cbar = (C1 + C2) / 2;
+  const Cbar7 = Math.pow(Cbar, 7);
+  const G = 0.5 * (1 - Math.sqrt(Cbar7 / (Cbar7 + Math.pow(25, 7))));
+
+  const a1p = (1 + G) * a1;
+  const a2p = (1 + G) * a2;
+  const C1p = Math.hypot(a1p, b1);
+  const C2p = Math.hypot(a2p, b2);
+
+  const h1p = ((Math.atan2(b1, a1p) * deg) + 360) % 360;
+  const h2p = ((Math.atan2(b2, a2p) * deg) + 360) % 360;
+
+  const dLp = L2 - L1;
+  const dCp = C2p - C1p;
+
+  let dhp;
+  if (C1p * C2p === 0) dhp = 0;
+  else {
+    let diff = h2p - h1p;
+    if (diff > 180) diff -= 360;
+    else if (diff < -180) diff += 360;
+    dhp = diff;
+  }
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin((dhp / 2) * rad);
+
+  const Lbarp = (L1 + L2) / 2;
+  const Cbarp = (C1p + C2p) / 2;
+
+  let hbarp;
+  if (C1p * C2p === 0) hbarp = h1p + h2p;
+  else {
+    if (Math.abs(h1p - h2p) > 180) hbarp = (h1p + h2p + 360) / 2;
+    else hbarp = (h1p + h2p) / 2;
+  }
+
+  const T = 1
+    - 0.17 * Math.cos((hbarp - 30) * rad)
+    + 0.24 * Math.cos((2 * hbarp) * rad)
+    + 0.32 * Math.cos((3 * hbarp + 6) * rad)
+    - 0.20 * Math.cos((4 * hbarp - 63) * rad);
+
+  const dTheta = 30 * Math.exp(-Math.pow((hbarp - 275) / 25, 2));
+  const Cbarp7 = Math.pow(Cbarp, 7);
+  const Rc = 2 * Math.sqrt(Cbarp7 / (Cbarp7 + Math.pow(25, 7)));
+  const Sl = 1 + (0.015 * Math.pow(Lbarp - 50, 2)) / Math.sqrt(20 + Math.pow(Lbarp - 50, 2));
+  const Sc = 1 + 0.045 * Cbarp;
+  const Sh = 1 + 0.015 * Cbarp * T;
+  const Rt = -Math.sin(2 * dTheta * rad) * Rc;
+
+  return Math.sqrt(
+    Math.pow(dLp / (kL * Sl), 2) +
+    Math.pow(dCp / (kC * Sc), 2) +
+    Math.pow(dHp / (kH * Sh), 2) +
+    Rt * (dCp / (kC * Sc)) * (dHp / (kH * Sh))
+  );
+}
+
+// Hue angle difference in LCH space (0..180°)
+function hueDeltaDeg(lab1, lab2) {
+  const h1 = ((Math.atan2(lab1.b, lab1.a) * 180 / Math.PI) + 360) % 360;
+  const h2 = ((Math.atan2(lab2.b, lab2.a) * 180 / Math.PI) + 360) % 360;
+  let d = Math.abs(h1 - h2);
+  if (d > 180) d = 360 - d;
+  return d;
+}
+
+/* ============================================================
+   COMPARISON
+   ============================================================ */
+
+// Thresholds tuned to "can a human eye catch it"
+const T_NOTICE = 2;   // below → imperceptible
+const T_ALERT  = 5;   // above → clearly significant
+
+function classifyDelta(dE) {
+  if (dE < T_NOTICE) return "ok";
+  if (dE < T_ALERT)  return "warn";
+  return "alert";
+}
+
+function compareToken(a, b) {
+  const ca = hexToRgba(a.hex);
+  const cb = hexToRgba(b.hex);
+  if (!ca || !cb) return { valid: false };
+
+  const labOf = rgb => xyzToLab(rgbToXyz(rgb));
+  const hasAlpha = ca.a < 1 || cb.a < 1;
+
+  // ΔE: for translucent colors, composite over BOTH white and black and take
+  // the worst case, so alpha-only differences (overlays, separators) are caught.
+  let dE, lab1, lab2;
+  if (!hasAlpha) {
+    lab1 = labOf(ca); lab2 = labOf(cb);
+    dE = deltaE2000(lab1, lab2);
+  } else {
+    dE = 0;
+    for (const bg of [{ r: 255, g: 255, b: 255 }, { r: 0, g: 0, b: 0 }]) {
+      const l1 = labOf(compositeOver(ca, bg));
+      const l2 = labOf(compositeOver(cb, bg));
+      const d = deltaE2000(l1, l2);
+      if (d >= dE) { dE = d; lab1 = l1; lab2 = l2; }
+    }
+  }
+
+  // Lum / Hue: report on the color composited over white (or the opaque color)
+  const rep1 = hasAlpha ? compositeOver(ca, { r: 255, g: 255, b: 255 }) : ca;
+  const rep2 = hasAlpha ? compositeOver(cb, { r: 255, g: 255, b: 255 }) : cb;
+  const dL = labOf(rep2).L - labOf(rep1).L;
+  const dHue = hueDeltaDeg(labOf(rep1), labOf(rep2));
+  const dLumPct = (lumFromRgb(rep2) - lumFromRgb(rep1)) * 100;
+  const dAlphaPct = (cb.a - ca.a) * 100;
+
+  return {
+    valid: true,
+    dE,
+    dL,
+    dHue,
+    dLumPct,
+    dAlphaPct,
+    hasAlpha,
+    level: classifyDelta(dE),
+  };
+}
+
+/* ============================================================
+   DATA — dummy sets (10 tokens). Set B is a "branch" with a mix
+   of identical, subtly-shifted, and clearly-shifted colors so the
+   tagging is visible. Replace via the Load Set A/B buttons.
+   ============================================================ */
+
+const DUMMY_A = {
+  name: "Mint Core v3.0",
+  tokens: [
+    { token: "color/bg/primary",        base: "neutral.0",    hex: "#FFFFFF" },
+    { token: "color/bg/secondary",      base: "neutral.50",   hex: "#F7F7F7" },
+    { token: "color/text/primary",      base: "neutral.900",  hex: "#111111" },
+    { token: "color/text/muted",        base: "neutral.500",  hex: "#6B7280" },
+    { token: "color/brand/primary",     base: "mint.500",     hex: "#12B886" },
+    { token: "color/brand/hover",       base: "mint.600",     hex: "#0CA678" },
+    { token: "color/accent/warning",    base: "amber.500",    hex: "#F59E0B" },
+    { token: "color/accent/danger",     base: "red.500",      hex: "#EF4444" },
+    { token: "color/accent/info",       base: "blue.500",     hex: "#3B82F6" },
+    { token: "color/border/subtle",     base: "neutral.200",  hex: "#E5E7EB" },
+  ],
+};
+
+const DUMMY_B = {
+  name: "Legacy LEGO v3.0",
+  tokens: [
+    { token: "color/bg/primary",        base: "neutral.0",    hex: "#FFFFFF" }, // identical
+    { token: "color/bg/secondary",      base: "neutral.50",   hex: "#F4F4F5" }, // subtle
+    { token: "color/text/primary",      base: "neutral.900",  hex: "#121417" }, // subtle
+    { token: "color/text/muted",        base: "neutral.500",  hex: "#7C8697" }, // noticeable
+    { token: "color/brand/primary",     base: "mint.500",     hex: "#10A978" }, // subtle-ish
+    { token: "color/brand/hover",       base: "mint.600",     hex: "#1C9B6E" }, // noticeable hue
+    { token: "color/accent/warning",    base: "amber.500",    hex: "#FB8C00" }, // noticeable
+    { token: "color/accent/danger",     base: "red.500",      hex: "#DC2626" }, // noticeable
+    { token: "color/accent/info",       base: "blue.500",     hex: "#2563EB" }, // noticeable
+    { token: "color/border/subtle",     base: "neutral.200",  hex: "#D4D4D8" }, // noticeable
+  ],
+};
+
+/* ============================================================
+   DTCG PARSER + ALIAS RESOLUTION
+   A "set" = one uploaded folder that may contain many DTCG files
+   (primitives + semantic). We flatten every file into one global
+   map first, THEN resolve, so a semantic token like
+   { "$value": "{color.blue.500}" } can find its primitive that
+   lives in a sibling file.
+     • Semantic token → Base = the referenced primitive path,
+                        Hex  = the resolved literal value.
+     • Primitive token → Base = "", Hex = its literal value.
+   ============================================================ */
+
+// Walk a DTCG object → Map(dottedPath → { rawValue, type })
+function flattenDTCG(node, prefix, map) {
+  if (node == null || typeof node !== "object") return;
+  if ("$value" in node || "value" in node) {
+    map.set(prefix, { rawValue: node.$value ?? node.value, type: node.$type ?? node.type });
+    return;
+  }
+  for (const k of Object.keys(node)) {
+    if (k.startsWith("$")) continue;
+    flattenDTCG(node[k], prefix ? prefix + "." + k : k, map);
+  }
+}
+
+function normalizeHex(v) {
+  if (typeof v !== "string") return null;
+  let h = v.trim();
+  if (!/^#?[0-9a-fA-F]{3}([0-9a-fA-F]{3})?([0-9a-fA-F]{2})?$/.test(h)) return null;
+  if (!h.startsWith("#")) h = "#" + h;
+  return hexToRgb(h) ? h.toUpperCase() : null;
+}
+
+// Follow {alias.chains} until a literal value.
+// Returns { value, basePath } where basePath is the FINAL primitive token
+// that actually holds the literal (e.g. "Base.Colour.Purple.600").
+function resolveRef(raw, map, seen, lastKey) {
+  if (typeof raw !== "string") return { value: null, basePath: lastKey };
+  const m = raw.match(/^\{(.+)\}$/);
+  if (!m) return { value: raw, basePath: lastKey };      // literal reached
+  const key = m[1].replace(/\//g, ".");
+  if (seen.has(key)) return { value: null, basePath: lastKey };  // cycle guard
+  seen.add(key);
+  const node = map.get(key);
+  if (!node) return { value: null, basePath: key };      // dangling reference
+  return resolveRef(String(node.rawValue), map, seen, key);
+}
+
+// Trim a primitive path to a readable "Base" label, e.g.
+// "Base.Colour.Purple.600" → "Purple / 600", "Base.Color.Grey.800" → "Grey / 800"
+function friendlyBase(path) {
+  if (!path) return "";
+  return path
+    .replace(/^Base[./](Colour|Color)[./]/i, "")
+    .replace(/\./g, " / ");
+}
+
+function resolveTokens(map, onlyPaths) {
+  const out = [];
+  for (const [path, node] of map) {
+    if (onlyPaths && !onlyPaths.has(path)) continue;             // emit only these tokens (Base still used for resolution)
+    const raw = node.rawValue;
+    if (typeof raw !== "string") continue;                       // skip composite types
+    if (node.type && String(node.type).toLowerCase() !== "color") continue;
+    const ref = raw.match(/^\{(.+)\}$/);
+    let base = "", hex, baseKey = "";
+    if (ref) {
+      const r = resolveRef(raw, map, new Set(), null);
+      hex = normalizeHex(r.value);
+      baseKey = r.basePath || ref[1];
+      base = friendlyBase(baseKey);
+    } else {
+      hex = normalizeHex(raw);
+    }
+    if (!hex) continue;                                          // unresolved / non-color
+    // Which base palette did the value ultimately come from?
+    let basePalette = "";
+    if (/(^|[./])Colour([./]|$)/i.test(baseKey)) basePalette = "colour";
+    else if (/(^|[./])Color([./]|$)/i.test(baseKey)) basePalette = "color";
+    out.push({
+      token: path.replace(/\./g, "/"),
+      base,
+      baseKey: baseKey.replace(/\./g, "/"),
+      basePalette,
+      hex,
+      semantic: !!ref,
+      group: path.split(".")[0],                                 // Semantic / Component / ...
+    });
+  }
+  return out;
+}
+
+// Single JSON object (internal shape OR one DTCG file)
+function parseTokenSet(json, fallbackName) {
+  if (json && Array.isArray(json.tokens)) {
+    return { name: json.name || fallbackName, tokens: json.tokens };
+  }
+  const map = new Map();
+  flattenDTCG(json, "", map);
+  return { name: fallbackName, tokens: resolveTokens(map) };
+}
+
+/* ---------- Theme / mode detection ----------
+   Themes can show up three ways in a DTCG folder:
+     1. subfolder:  root/light/color.json   → theme "Light"
+     2. filename:   color.dark.json          → theme "Dark"
+     3. inline mode object: { "$value": { "Light":"#fff", "Dark":"#000" } }
+   Files with no detectable theme are treated as GLOBAL (shared
+   primitives) and merged into every theme so aliases resolve. */
+const THEME_WORDS = ["light", "dark", "day", "night", "dim", "hc", "highcontrast", "high-contrast", "contrast"];
+function cap(s) { s = String(s); return s.charAt(0).toUpperCase() + s.slice(1); }
+function detectTheme(relPath) {
+  const parts = relPath.split("/");
+  for (let i = 1; i < parts.length - 1; i++) {              // subfolders (skip root + filename)
+    if (THEME_WORDS.includes(parts[i].toLowerCase())) return cap(parts[i]);
+  }
+  const file = (parts[parts.length - 1] || "").replace(/\.json$/i, "").toLowerCase();
+  for (const w of THEME_WORDS) {
+    if (new RegExp("(^|[._\\-])" + w + "([._\\-]|$)").test(file)) return cap(w);
+  }
+  return null;                                              // global / theme-less
+}
+
+// Flatten a DTCG object into flat entries, expanding inline mode objects
+function flattenEntries(node, prefix, theme, out) {
+  if (node == null || typeof node !== "object") return;
+  if ("$value" in node || "value" in node) {
+    const rv = node.$value ?? node.value;
+    const type = node.$type ?? node.type;
+    if (rv && typeof rv === "object" && !Array.isArray(rv)) {
+      for (const mk of Object.keys(rv)) out.push({ path: prefix, rawValue: rv[mk], type, theme: cap(mk) });
+    } else {
+      out.push({ path: prefix, rawValue: rv, type, theme });
+    }
+    return;
+  }
+  for (const k of Object.keys(node)) {
+    if (k.startsWith("$")) continue;
+    flattenEntries(node[k], prefix ? prefix + "." + k : k, theme, out);
+  }
+}
+
+/* A folder of DTCG files → { name, themes:{theme:tokens[]}, order:[] }.
+   Global (theme-less) tokens are merged into every theme so semantic
+   tokens can resolve their primitive base regardless of which file it lives in. */
+function parseFolder(files, fallbackName) {
+  const entries = [];
+  for (const f of files) {
+    let json; try { json = JSON.parse(f.text); } catch (e) { continue; }
+    const base = (f.path.split("/").pop() || "").toLowerCase();
+    if (base === "$themes.json" || base === "$metadata.json") continue; // Tokens Studio meta — ignore for now
+    if (json && Array.isArray(json.tokens)) {
+      for (const tok of json.tokens) entries.push({ path: tok.token.replace(/\//g, "."), rawValue: tok.hex, type: "color", theme: null });
+      continue;
+    }
+    flattenEntries(json, "", detectTheme(f.path), entries);
+  }
+
+  const themes = [];
+  for (const e of entries) if (e.theme && !themes.includes(e.theme)) themes.push(e.theme);
+  const globals = entries.filter(e => e.theme == null);
+  const mapFrom = list => { const m = new Map(); for (const e of list) m.set(e.path, { rawValue: e.rawValue, type: e.type }); return m; };
+
+  const out = {};
+  const order = [];
+  if (!themes.length) {
+    out.Default = resolveTokens(mapFrom(globals));
+    order.push("Default");
+  } else {
+    for (const th of themes) {
+      const merged = mapFrom(globals);                     // shared primitives (Base) for resolution only
+      const themedPaths = new Set();                        // paths defined in the Theme file(s)
+      for (const e of entries) if (e.theme === th) { merged.set(e.path, { rawValue: e.rawValue, type: e.type }); themedPaths.add(e.path); }
+      out[th] = resolveTokens(merged, themedPaths);         // emit only Theme tokens, Base stays hidden
+      order.push(th);
+    }
+  }
+
+  // Base.Colour palette (British) — kept for "suggested fix" lookups
+  const basePalette = resolveTokens(mapFrom(globals))
+    .filter(t => /^Base\/Colour\//i.test(t.token))
+    .map(t => ({
+      key: t.token,                                          // Base/Colour/Purple/500
+      name: t.token.replace(/^Base\/Colour\//i, "").replace(/\//g, " / "),
+      hex: t.hex,
+    }));
+
+  return { name: fallbackName, themes: out, order, basePalette };
+}
+
+/* ============================================================
+   STATE + RENDER
+   ============================================================ */
+
+let setA = DUMMY_A;
+let setB = DUMMY_B;
+let activeTheme = "Default";
+
+// Tokens for a set under the active theme (falls back to legacy .tokens / first theme)
+function tokensOf(set, theme) {
+  if (set.themes) return set.themes[theme] || set.themes[set.order[0]] || [];
+  return set.tokens || [];
+}
+
+function buildRows() {
+  // match by token name under the active theme; keep only tokens present in both
+  const aTokens = tokensOf(setA, activeTheme);
+  const bTokens = tokensOf(setB, activeTheme);
+  const mapB = new Map(bTokens.map(t => [t.token, t]));
+  const rows = [];
+  for (const a of aTokens) {
+    const b = mapB.get(a.token);
+    if (!b) continue;
+    const cmp = compareToken(a, b);
+    rows.push({ a, b, cmp, idx: rows.length });   // idx = file/document order
+  }
+  return rows;
+}
+
+function fmt(n, d = 1) {
+  return (n >= 0 ? "" : "−") + Math.abs(n).toFixed(d);
+}
+
+function levelLabel(level) {
+  return level === "ok" ? "Match" : level === "warn" ? "Noticeable" : "Significant";
+}
+
+function render() {
+  const list = document.getElementById("list");
+  let rows = buildRows();
+
+  // filter
+  const filter = document.getElementById("filter").value;
+  const type = document.getElementById("typeFilter").value;
+  const group = document.getElementById("groupFilter").value;
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  if (filter === "flagged") rows = rows.filter(r => r.cmp.valid && r.cmp.level !== "ok");
+  if (filter === "alert")   rows = rows.filter(r => r.cmp.valid && r.cmp.level === "alert");
+  if (type === "semantic")  rows = rows.filter(r => r.a.semantic !== false);
+  if (type === "primitive") rows = rows.filter(r => r.a.semantic === false);
+  if (group !== "all")      rows = rows.filter(r => r.a.group === group);
+  if (q) rows = rows.filter(r => r.a.token.toLowerCase().includes(q));
+
+  // sort
+  const sort = document.getElementById("sort").value;
+  rows.sort((x, y) => {
+    if (sort === "file") return x.idx - y.idx;
+    if (sort === "name") return x.a.token.localeCompare(y.a.token);
+    const dx = x.cmp.valid ? x.cmp.dE : -1;
+    const dy = y.cmp.valid ? y.cmp.dE : -1;
+    return sort === "delta-asc" ? dx - dy : dy - dx;
+  });
+
+  // summary counts (unfiltered)
+  const all = buildRows();
+  const nWarn  = all.filter(r => r.cmp.valid && r.cmp.level === "warn").length;
+  const nAlert = all.filter(r => r.cmp.valid && r.cmp.level === "alert").length;
+  document.getElementById("summary").innerHTML =
+    `<b>${all.length}</b> tokens · <b style="color:var(--orange)">${nWarn}</b> noticeable · <b style="color:var(--red)">${nAlert}</b> significant`;
+
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="empty">No matching tokens to compare.</div>`;
+    return;
+  }
+
+  const palette = (setB && setB.basePalette) || [];       // suggest Branch fixes from Base.Colour
+  list.innerHTML = rows.map((r, i) => renderRow(r, i, palette)).join("");
+}
+
+// Closest Base.Colour primitive to a target hex (minimises perceptual ΔE)
+function bestBaseColour(targetHex, palette) {
+  let best = null;
+  for (const p of palette) {
+    const c = compareToken({ hex: targetHex }, { hex: p.hex });
+    if (!c.valid) continue;
+    if (!best || c.dE < best.dE) best = { key: p.key, name: p.name, hex: p.hex, dE: c.dE };
+  }
+  return best;
+}
+
+// Nearest Base.Colour suggestion for a differing row (or null)
+function rowSuggestion(row, palette) {
+  const { a, cmp } = row;
+  if (!palette || !palette.length || !cmp.valid || cmp.level === "ok") return null;
+  return bestBaseColour(a.hex, palette);
+}
+
+// Suggestion panel: for a differing Branch token, the nearest Base.Colour to Main
+function suggestionHTML(row, best) {
+  const { cmp } = row;
+  if (!best) return `<div class="suggest"></div>`;
+  const matches  = best.dE < 1.5;                          // effectively identical to Main
+  const improves = best.dE < cmp.dE - 0.2;                 // reduces the visible gap
+  const cls = matches ? "ok" : improves ? "warn" : "none";
+  const verdict = matches ? "matches Main" : improves ? "closer to Main" : "no closer match";
+  return `
+    <div class="suggest ${cls}">
+      <div class="s-swatch cswatch" style="--sw:${best.hex}"></div>
+      <div class="s-info">
+        <div class="s-name" title="Base.Colour.${best.key.replace(/^Base\/Colour\//i, "").replace(/\//g, ".")}">${best.name}<i class="base-flag colour" title="Base.Colour"></i></div>
+        <div class="s-meta">${best.hex.toUpperCase()}</div>
+        <div class="s-meta">ΔE ${cmp.dE.toFixed(1)} → <b>${best.dE.toFixed(1)}</b> · <span class="s-verdict">${verdict}</span></div>
+      </div>
+    </div>`;
+}
+
+function panelHTML(t, side) {
+  const flag = t.basePalette
+    ? `<i class="base-flag ${t.basePalette}" title="${t.baseKey.replace(/\//g, ".")}"></i>`
+    : "";
+  const info = `
+    <div class="info">
+      <div class="token-name" title="${t.token}">${t.token}</div>
+      <div class="meta">
+        <span class="base">${t.base || "—"}${flag}</span>
+        <span class="divider"></span>
+        <span class="hex">${t.hex.toUpperCase()}</span>
+      </div>
+    </div>`;
+  const swatch = `<div class="swatch cswatch" style="--sw:${t.hex}"></div>`;
+  return side === "main"
+    ? `<div class="panel main">${info}${swatch}</div>`
+    : `<div class="panel branch">${swatch}${info}</div>`;
+}
+
+function renderRow(r, i, palette) {
+  const { a, b, cmp } = r;
+  let delta;
+  if (!cmp.valid) {
+    delta = `<div class="delta"><div class="tag"><div class="headline">invalid hex</div></div></div>`;
+  } else {
+    const cls = cmp.level;
+    const dir = cmp.dL > 0 ? "lighter" : cmp.dL < 0 ? "darker" : "equal";
+    const alpha = cmp.hasAlpha ? `<span>α <b>${fmt(cmp.dAlphaPct, 0)}%</b></span>` : "";
+    delta = `
+      <div class="delta">
+        <div class="tag ${cls}">
+          <div class="headline">
+            <span class="badge">${levelLabel(cls)}</span>
+            ΔE ${cmp.dE.toFixed(1)}
+          </div>
+          <div class="breakdown">
+            <span>Lum <b>${fmt(cmp.dLumPct)}%</b> (${dir})</span>
+            <span>Hue <b>${cmp.dHue.toFixed(1)}°</b></span>
+            ${alpha}
+          </div>
+        </div>
+      </div>`;
+  }
+  const best = rowSuggestion(r, palette);
+  const mid = best
+    ? `<div class="mid-suggest cswatch" style="--sw:${best.hex}" title="Suggested: ${best.name} · ${best.hex.toUpperCase()}"></div>`
+    : `<div class="mid-suggest empty"></div>`;
+  const suggest = suggestionHTML(r, best);
+  return `<div class="row"><div class="sno">${i + 1}</div>${panelHTML(a, "main")}${mid}${panelHTML(b, "branch")}${delta}${suggest}</div>`;
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+
+// Each set = one uploaded folder of DTCG files (merged, alias-resolved, per-theme)
+async function loadFolder(input, which) {
+  const files = [...(input.files || [])].filter(f => /\.json$/i.test(f.name));
+  if (!files.length) { alert("No .json files found in that folder."); return; }
+  try {
+    const payload = await Promise.all(
+      files.map(async f => ({ path: f.webkitRelativePath || f.name, text: await f.text() }))
+    );
+    const root = (payload[0].path || "").split("/")[0] || (which === "A" ? "Set A" : "Set B");
+    const parsed = parseFolder(payload, root);
+    const total = parsed.order.reduce((n, t) => n + parsed.themes[t].length, 0);
+    if (!total) throw new Error("no color tokens found in folder");
+    const themeInfo = parsed.order.length > 1 || parsed.order[0] !== "Default"
+      ? " · themes: " + parsed.order.join(", ") : "";
+    const label = parsed.name + " (" + files.length + " file" + (files.length > 1 ? "s" : "") + ")" + themeInfo;
+    if (which === "A") { setA = parsed; document.getElementById("nameA").textContent = "Set A · " + label; }
+    else               { setB = parsed; document.getElementById("nameB").textContent = "Set B · " + label; }
+    refreshThemeSelect();
+    refreshGroupSelect();
+    render();
+  } catch (e) {
+    alert("Could not load folder: " + e.message);
+  }
+}
+
+// Determine the light/dark theme names available across both sets
+function themePair() {
+  const union = [];
+  [setA, setB].forEach(set => (set.order || []).forEach(t => { if (!union.includes(t)) union.push(t); }));
+  if (!union.length) union.push("Default");
+  const dark = union.find(t => /dark/i.test(t)) || null;
+  const light = union.find(t => /light/i.test(t)) || union.find(t => t !== dark) || union[0];
+  return { union, light, dark };
+}
+
+function applyDarkMode() {
+  document.body.classList.toggle("dark-mode", /dark/i.test(activeTheme));
+}
+
+// Sync the Light/Dark toggle with the loaded data
+function refreshThemeSelect() {
+  const { union, light, dark } = themePair();
+  if (!union.includes(activeTheme)) activeTheme = light || union[0];
+  const toggle = document.getElementById("themeToggle");
+  toggle.disabled = !(dark && light && dark !== light);
+  toggle.checked = /dark/i.test(activeTheme);
+  document.getElementById("themeLabel").textContent = activeTheme;
+  applyDarkMode();
+}
+
+// Populate the group dropdown from the top-level collections present in the data
+function refreshGroupSelect() {
+  const sel = document.getElementById("groupFilter");
+  const groups = new Set();
+  [setA, setB].forEach(set =>
+    (set.order || ["_"]).forEach(t => tokensOf(set, t).forEach(tok => tok.group && groups.add(tok.group)))
+  );
+  const list = [...groups].sort();
+  sel.innerHTML = `<option value="all">All groups</option>` +
+    list.map(g => `<option value="${g}">${g}</option>`).join("");
+  sel.disabled = list.length < 2;
+}
+
+document.getElementById("fileA").addEventListener("change", e => loadFolder(e.target, "A"));
+document.getElementById("fileB").addEventListener("change", e => loadFolder(e.target, "B"));
+document.getElementById("themeToggle").addEventListener("change", e => {
+  const { light, dark } = themePair();
+  activeTheme = e.target.checked ? (dark || activeTheme) : (light || activeTheme);
+  document.getElementById("themeLabel").textContent = activeTheme;
+  applyDarkMode();
+  render();
+});
+document.getElementById("reload").addEventListener("click", () => {
+  setA = DUMMY_A; setB = DUMMY_B; activeTheme = "Default";
+  document.getElementById("nameA").textContent = "Set A · dummy";
+  document.getElementById("nameB").textContent = "Set B · dummy";
+  refreshThemeSelect();
+  refreshGroupSelect();
+  render();
+});
+
+// Info dialog
+const help = document.getElementById("help");
+document.getElementById("infoBtn").addEventListener("click", () => help.showModal());
+document.getElementById("helpClose").addEventListener("click", () => help.close());
+help.addEventListener("click", e => { if (e.target === help) help.close(); }); // click backdrop
+
+["sort", "filter", "typeFilter", "groupFilter", "search"].forEach(id =>
+  document.getElementById(id).addEventListener("input", render)
+);
+
+// Toggle the slim "suggested value" swatch between the two colors (default ON)
+const midToggle = document.getElementById("midToggle");
+midToggle.checked = true;
+document.body.classList.toggle("show-mid-suggest", midToggle.checked);
+midToggle.addEventListener("change", () => {
+  document.body.classList.toggle("show-mid-suggest", midToggle.checked);
+});
+
+refreshGroupSelect();
+render();
+</script>
+</body>
+</html>

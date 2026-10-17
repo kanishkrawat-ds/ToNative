@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Token Structure Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --font-12: 12px;
+    --font-10: 10px;
+    --muted: rgba(0, 0, 0, 0.6);
+    --added: #16a34a;
+    --added-bg: #eaf6ee;
+    --removed: #ef4444;
+    --removed-bg: #fdeaea;
+    --common: #6b7280;
+    --common-bg: #f4f4f5;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #fff;
+    color: #000;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 24px;
+    background: #fff;
+    border-bottom: 1px solid #ececec;
+    flex-wrap: wrap;
+  }
+  .toolbar h1 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.2px;
+  }
+  .toolbar .spacer { flex: 1 1 auto; }
+  .toolbar label.file {
+    font-size: 11px;
+    color: #333;
+    border: 1px solid #d8d8d8;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    background: #fafafa;
+    white-space: nowrap;
+  }
+  .toolbar label.file:hover { background: #f0f0f0; }
+  .toolbar label.file input { display: none; }
+  .toolbar .set-name {
+    font-size: 10px;
+    color: var(--muted);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .toolbar button {
+    font-family: inherit;
+    font-size: 11px;
+    border: 1px solid #d8d8d8;
+    border-radius: 6px;
+    padding: 6px 12px;
+    background: #111;
+    color: #fff;
+    cursor: pointer;
+  }
+  .toolbar button.ghost { background: #fafafa; color: #333; }
+  .toolbar button:hover { opacity: 0.9; }
+
+  /* ---------- Filters ---------- */
+  .subbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 24px;
+    border-bottom: 1px solid #f1f1f1;
+    font-size: 10px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .subbar .legend { display: flex; gap: 14px; align-items: center; }
+  .subbar .legend .dot { display: inline-flex; align-items: center; gap: 5px; }
+  .subbar .legend .dot i {
+    width: 9px; height: 9px; border-radius: 50%; display: inline-block;
+  }
+  .subbar select, .subbar input[type="search"] {
+    font-family: inherit; font-size: 10px;
+    border: 1px solid #ddd; border-radius: 5px; padding: 4px 8px; color: #000;
+  }
+  .subbar .summary { margin-left: auto; }
+  .subbar .summary b { color: #000; }
+
+  /* ---------- Column header ---------- */
+  .col-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 24px 8px;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid #f1f1f1;
+  }
+  .col-header .h-sno { width: 40px; flex: none; }
+  .col-header .h-path { flex: 1; min-width: 0; }
+  .col-header .h-path.right { text-align: right; }
+  .col-header .h-status { width: 150px; flex: none; text-align: center; }
+
+  /* ---------- Rows ---------- */
+  #list { padding: 0 24px; }
+  .row {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #f3f3f3;
+    padding: 12px 0;
+  }
+  .row:hover { background: #fcfcfc; }
+
+  .sno {
+    width: 40px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    font-size: var(--font-10);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cell {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-12);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cell.right { text-align: right; }
+  .cell.empty { color: rgba(0, 0, 0, 0.25); }
+  .cell.a-removed { color: var(--removed); }
+  .cell.b-added { color: var(--added); }
+
+  .status {
+    width: 150px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .status .badge {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 8px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: #fff;
+  }
+  .status .badge.added   { background: var(--added); }
+  .status .badge.removed { background: var(--removed); }
+  .status .badge.common  { background: var(--common); }
+
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>Token Structure Comparison</h1>
+    <label class="file">
+      Load Set A (folder)
+      <input type="file" id="fileA" webkitdirectory directory multiple />
+    </label>
+    <span class="set-name" id="nameA">Set A · dummy</span>
+    <label class="file">
+      Load Set B (folder)
+      <input type="file" id="fileB" webkitdirectory directory multiple />
+    </label>
+    <span class="set-name" id="nameB">Set B · dummy</span>
+    <div class="spacer"></div>
+    <button class="ghost" id="reload">Load dummy data</button>
+  </div>
+
+  <div class="subbar">
+    <div class="legend">
+      <span class="dot"><i style="background:var(--common)"></i>In both</span>
+      <span class="dot"><i style="background:var(--removed)"></i>Only in A (removed)</span>
+      <span class="dot"><i style="background:var(--added)"></i>Only in B (added)</span>
+    </div>
+    <label>Sort:
+      <select id="sort">
+        <option value="status">Status (changes first)</option>
+        <option value="name">Token name (A–Z)</option>
+      </select>
+    </label>
+    <label>Show:
+      <select id="filter">
+        <option value="all">All</option>
+        <option value="changed">Changes only (added + removed)</option>
+        <option value="added">Added only</option>
+        <option value="removed">Removed only</option>
+        <option value="common">In both only</option>
+      </select>
+    </label>
+    <input type="search" id="search" placeholder="Filter by token name…" />
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <div class="col-header">
+    <div class="h-sno">#</div>
+    <div class="h-path">Set A — path</div>
+    <div class="h-status">Status</div>
+    <div class="h-path right">Set B — path</div>
+  </div>
+
+  <div id="list"></div>
+
+<script>
+/* ============================================================
+   TOKEN STRUCTURE COMPARISON
+   Compares which token PATHS exist in Set A vs Set B.
+   Values, $types, aliases and themes are all ignored — this is
+   a pure key-presence (set) diff.
+   ============================================================ */
+
+/* ---------- Path extraction ----------
+   Walk a DTCG object and emit EVERY leaf token path (any node with
+   $value / value), regardless of type, resolvability, or whether it
+   is a literal or an alias. Paths use "/" separators to match the
+   token-naming convention used elsewhere. */
+function collectPaths(node, prefix, out) {
+  if (node == null || typeof node !== "object") return;
+  if ("$value" in node || "value" in node) {
+    if (prefix) out.add(prefix);
+    return;
+  }
+  for (const k of Object.keys(node)) {
+    if (k.startsWith("$")) continue;                 // skip $type, $description, etc.
+    collectPaths(node[k], prefix ? prefix + "/" + k : k, out);
+  }
+}
+
+/* A folder of files → Set<string> of all token paths.
+   Supports DTCG files and the legacy { name, tokens:[{token,...}] } shape.
+   Ignores Tokens Studio meta files. */
+function pathsFromFolder(files) {
+  const out = new Set();
+  for (const f of files) {
+    let json; try { json = JSON.parse(f.text); } catch (e) { continue; }
+    const base = (f.path.split("/").pop() || "").toLowerCase();
+    if (base === "$themes.json" || base === "$metadata.json") continue;
+    if (json && Array.isArray(json.tokens)) {
+      for (const tok of json.tokens) {
+        if (tok && tok.token) out.add(String(tok.token).replace(/\./g, "/"));
+      }
+      continue;
+    }
+    collectPaths(json, "", out);
+  }
+  return out;
+}
+
+// Dummy internal set → Set<string>
+function pathsFromDummy(dummy) {
+  return new Set(dummy.tokens.map(t => t.token.replace(/\./g, "/")));
+}
+
+/* ============================================================
+   DATA — dummy sets. B adds a couple of paths and drops a couple
+   so all three statuses are visible on load.
+   ============================================================ */
+
+const DUMMY_A = {
+  name: "Mint Core v3.0",
+  tokens: [
+    { token: "color/bg/primary" },
+    { token: "color/bg/secondary" },
+    { token: "color/text/primary" },
+    { token: "color/text/muted" },
+    { token: "color/brand/primary" },
+    { token: "color/brand/hover" },
+    { token: "color/accent/warning" },
+    { token: "color/accent/danger" },
+    { token: "color/accent/info" },
+    { token: "color/border/subtle" },
+    { token: "color/border/strong" },      // removed in B
+    { token: "color/legacy/highlight" },   // removed in B
+  ],
+};
+
+const DUMMY_B = {
+  name: "Legacy LEGO v3.0",
+  tokens: [
+    { token: "color/bg/primary" },
+    { token: "color/bg/secondary" },
+    { token: "color/bg/tertiary" },        // added in B
+    { token: "color/text/primary" },
+    { token: "color/text/muted" },
+    { token: "color/brand/primary" },
+    { token: "color/brand/hover" },
+    { token: "color/brand/active" },       // added in B
+    { token: "color/accent/warning" },
+    { token: "color/accent/danger" },
+    { token: "color/accent/info" },
+    { token: "color/accent/success" },     // added in B
+    { token: "color/border/subtle" },
+  ],
+};
+
+/* ============================================================
+   STATE + RENDER
+   ============================================================ */
+
+let pathsA = pathsFromDummy(DUMMY_A);
+let pathsB = pathsFromDummy(DUMMY_B);
+
+// Build one row per path in the union, tagged with its status
+function buildRows() {
+  const union = new Set([...pathsA, ...pathsB]);
+  const rows = [];
+  for (const path of union) {
+    const inA = pathsA.has(path);
+    const inB = pathsB.has(path);
+    const status = inA && inB ? "common" : inA ? "removed" : "added";
+    rows.push({ path, inA, inB, status });
+  }
+  return rows;
+}
+
+const STATUS_ORDER = { removed: 0, added: 1, common: 2 };
+const STATUS_LABEL = { added: "Added", removed: "Removed", common: "In both" };
+
+function render() {
+  const list = document.getElementById("list");
+  const allRows = buildRows();
+  let rows = allRows;
+
+  // filter
+  const filter = document.getElementById("filter").value;
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  if (filter === "changed") rows = rows.filter(r => r.status !== "common");
+  else if (filter !== "all") rows = rows.filter(r => r.status === filter);
+  if (q) rows = rows.filter(r => r.path.toLowerCase().includes(q));
+
+  // sort
+  const sort = document.getElementById("sort").value;
+  rows = rows.slice().sort((x, y) => {
+    if (sort === "name") return x.path.localeCompare(y.path);
+    const s = STATUS_ORDER[x.status] - STATUS_ORDER[y.status];
+    return s !== 0 ? s : x.path.localeCompare(y.path);
+  });
+
+  // summary (unfiltered)
+  const nCommon  = allRows.filter(r => r.status === "common").length;
+  const nRemoved = allRows.filter(r => r.status === "removed").length;
+  const nAdded   = allRows.filter(r => r.status === "added").length;
+  document.getElementById("summary").innerHTML =
+    `<b>${nCommon}</b> in both · ` +
+    `<b style="color:var(--removed)">${nRemoved}</b> only in A · ` +
+    `<b style="color:var(--added)">${nAdded}</b> only in B`;
+
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="empty-state">No matching tokens.</div>`;
+    return;
+  }
+  list.innerHTML = rows.map((r, i) => renderRow(r, i)).join("");
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function renderRow(r, i) {
+  const safe = esc(r.path);
+  const aCell = r.inA
+    ? `<div class="cell ${r.status === "removed" ? "a-removed" : ""}" title="${safe}">${safe}</div>`
+    : `<div class="cell empty">—</div>`;
+  const bCell = r.inB
+    ? `<div class="cell right ${r.status === "added" ? "b-added" : ""}" title="${safe}">${safe}</div>`
+    : `<div class="cell right empty">—</div>`;
+  const badge = `<div class="status"><span class="badge ${r.status}">${STATUS_LABEL[r.status]}</span></div>`;
+  return `<div class="row"><div class="sno">${i + 1}</div>${aCell}${badge}${bCell}</div>`;
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+
+async function loadFolder(input, which) {
+  const files = [...(input.files || [])].filter(f => /\.json$/i.test(f.name));
+  if (!files.length) { alert("No .json files found in that folder."); return; }
+  try {
+    const payload = await Promise.all(
+      files.map(async f => ({ path: f.webkitRelativePath || f.name, text: await f.text() }))
+    );
+    const root = (payload[0].path || "").split("/")[0] || (which === "A" ? "Set A" : "Set B");
+    const paths = pathsFromFolder(payload);
+    if (!paths.size) throw new Error("no token paths found in folder");
+    const label = root + " (" + files.length + " file" + (files.length > 1 ? "s" : "") + " · " + paths.size + " paths)";
+    if (which === "A") { pathsA = paths; document.getElementById("nameA").textContent = "Set A · " + label; }
+    else               { pathsB = paths; document.getElementById("nameB").textContent = "Set B · " + label; }
+    render();
+  } catch (e) {
+    alert("Could not load folder: " + e.message);
+  }
+}
+
+document.getElementById("fileA").addEventListener("change", e => loadFolder(e.target, "A"));
+document.getElementById("fileB").addEventListener("change", e => loadFolder(e.target, "B"));
+document.getElementById("reload").addEventListener("click", () => {
+  pathsA = pathsFromDummy(DUMMY_A);
+  pathsB = pathsFromDummy(DUMMY_B);
+  document.getElementById("nameA").textContent = "Set A · dummy";
+  document.getElementById("nameB").textContent = "Set B · dummy";
+  render();
+});
+
+["sort", "filter", "search"].forEach(id =>
+  document.getElementById(id).addEventListener("input", render)
+);
+
+render();
+</script>
+</body>
+</html>
